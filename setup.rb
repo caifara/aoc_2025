@@ -1,5 +1,7 @@
 require "bundler/setup"
 require "debug"
+require "benchmark"
+require "faraday"
 
 class Part
   def self.day
@@ -22,6 +24,22 @@ class Part
 
   def initialize(input)
     @input = input
+  end
+
+  def self.download_input
+    session = File.read(".aoc_session").strip
+    path = "/2025/day/#{day}/input"
+
+    response = Faraday.new({
+      url: "https://adventofcode.com",
+      headers: { "Cookie" => "session=#{session}" },
+    }).get(path)
+
+    raise unless response.status == 200
+
+    File.write("day_#{day}/input.txt", response.body)
+
+    puts "Saved input.txt"
   end
 end
 

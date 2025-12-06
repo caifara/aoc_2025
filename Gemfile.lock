@@ -8,11 +8,21 @@ GEM
       reline (>= 0.3.8)
     diff-lcs (1.6.2)
     erb (6.0.0)
+    faraday (2.14.0)
+      faraday-net_http (>= 2.0, < 3.5)
+      json
+      logger
+    faraday-net_http (3.4.2)
+      net-http (~> 0.5)
     io-console (0.8.1)
     irb (1.15.3)
       pp (>= 0.6.0)
       rdoc (>= 4.0.0)
       reline (>= 0.4.2)
+    json (2.17.1)
+    logger (1.7.0)
+    net-http (0.8.0)
+      uri (>= 0.11.1)
     pp (0.6.3)
       prettyprint
     prettyprint (0.2.0)
@@ -40,6 +50,7 @@ GEM
     rspec-support (3.13.6)
     stringio (3.1.8)
     tsort (0.2.0)
+    uri (1.1.1)
 
 PLATFORMS
   arm64-darwin-24
@@ -48,6 +59,7 @@ PLATFORMS
 DEPENDENCIES
   benchmark
   debug
+  faraday
   rspec
 
 RUBY VERSION

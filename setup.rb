@@ -50,3 +50,43 @@ class Object
     tap { |l| puts "/#{message}" if message }
   end
 end
+
+class Puzzle
+  def initialize(file:, test:)
+    @day = file.match(/day_(\d+)/)[1].to_i
+    @test = test
+  end
+
+  def dir = Pathname.new(__dir__).join("day_#{@day}")
+  def lines = input.split("\n")
+  def test? = @test
+
+  def input
+    filename = test? ? "test_input.txt" : "input.txt"
+    filepath = dir.join(filename)
+
+    unless File.exist?(filepath)
+      download_input(filepath) unless test?
+    end
+
+    dir.join(filename).read
+  end
+
+  private
+
+  def download_input(filepath)
+    session = File.read(".aoc_session").strip
+    path = "/2025/day/#{@day}/input"
+
+    response = Faraday.new({
+      url: "https://adventofcode.com",
+      headers: { "Cookie" => "session=#{session}" },
+    }).get(path)
+
+    raise unless response.status == 200
+
+    File.write(filepath, response.body)
+
+    puts "Saved input.txt"
+  end
+end

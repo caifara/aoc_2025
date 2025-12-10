@@ -47,7 +47,8 @@ class Point
 
     ray = LineSegment.new(self, second_point)
 
-    intersection_count = shape.directional_edges(:vertical).count { |e| e.intersect?(ray) }
+    intersection_count = shape.directional_edges(:vertical).count { |e| e.without_endpoints.intersect?(ray) } +
+                         shape.directional_edges(:horizontal).count { |e| ray.contains?(e) && shape.edge_is_entry?(e) }
 
     intersection_count.odd?
   end
@@ -58,7 +59,6 @@ class Shape
 
   def initialize(points)
     @points = points
-    @line_segments = {}
   end
 
   def edges
@@ -70,22 +70,25 @@ class Shape
     @directional_edges[direction] ||= edges.select { |e| e.direction == direction }
   end
 
-  def includes_line_segment?(line_segment)
-    line_segments(line_segment.straight).any? { |s| s.contains?(line_segment) }
-  end
+  #                                                           |‾
+  # edges are entries if they define a staircase like form _|‾
+  # if a ray is on that edge, it will enter or exit the shape
+  #
+  # if the shape is like a tower _|‾|_ the ray moving along the top will just
+  # touch the shape (or enter + exit)
+  #
+  # as only used for horizontal rays, i didn't care about making this work for vertical edges
+  def edge_is_entry?(edge)
+    raise unless edge.horizontal?
+    raise unless edges.include?(edge)
 
-  def line_segments(straight)
-    @line_segments[straight] || begin
-      @line_segments[straight] = []
+    edge_1 = directional_edges(edge.other_direction).find { |e| e.points.include?(edge.point1) }
+    edge_2 = directional_edges(edge.other_direction).find { |e| e.points.include?(edge.point2) }
 
-      directional_edges(straight.other_direction)
-        .collect { |e| e.intersection_point(straight) }
-        .compact
-        .combination(2)
-        .each_with_index { |(a, b), i| (i % 2).zero? && @line_segments[straight].push(LineSegment.new(a, b)) }
+    edge_1_other_y = (edge_1.points - [edge.point1]).first.y
+    edge_2_other_y = (edge_2.points - [edge.point2]).first.y
 
-      @line_segments[straight]
-    end
+    ((edge_1_other_y - edge.y) * (edge_2_other_y - edge.y)).negative?
   end
 end
 
@@ -113,6 +116,8 @@ class LineSegment
     @point2 = point2
   end
 
+  def points = [@point1, @point2]
+
   def x
     raise unless vertical?
 
@@ -125,8 +130,6 @@ class LineSegment
     @point1.y
   end
 
-  def x_or_y = vertical? ? x : y
-
   def without_endpoints
     if horizontal?
       x1, x2 = [point1.x, point2.x].sort.then { |x1, x2| [x1 + 1, x2 - 1] }
@@ -137,16 +140,18 @@ class LineSegment
     end
   end
 
-  # straight, linesegment or shape
   def intersect?(other)
-    return other.directional_edges(other_direction).any? { |e| e.intersect?(self) } if other.is_a?(Shape)
+    case other
+    when Shape
+      other.directional_edges(other_direction).any? { |e| e.without_endpoints.intersect?(self) }
+    when LineSegment
+      raise if direction == other.direction
 
-    raise if direction == other.direction
+      return false unless direction == :horizontal ? x_range.cover?(other.x) : y_range.cover?(other.y)
 
-    return false unless direction == :horizontal ? full_x_range.cover?(other.x) : full_y_range.cover?(other.y)
-    return true if other.is_a?(Straight)
-
-    direction == :horizontal ? other.full_y_range.cover?(y) : other.full_x_range.cover?(x)
+      direction == :horizontal ? other.y_range.cover?(y) : other.x_range.cover?(x)
+    else raise
+    end
   end
 
   def direction = point1.x == point2.x ? :vertical : :horizontal
@@ -154,61 +159,28 @@ class LineSegment
   def vertical? = direction == :vertical
   def horizontal? = direction == :horizontal
 
-  def intersection_point(other_or_straight)
-    return nil unless intersect?(other_or_straight)
+  def intersection_point(other)
+    return nil unless intersect?(other)
 
     if direction == :horizontal
-      Point.new(other_or_straight.x, y)
+      Point.new(other.x, y)
     else
-      Point.new(x, other_or_straight.y)
+      Point.new(x, other.y)
     end
   end
 
-  def straight
-    @straight ||= Straight.new(direction:, x_or_y:)
-  end
-
-  def x_range = @x_range ||= Range.new(*[point1.x, point2.x].sort.then { |x1, x2| [x1 + 1, x2 - 1] })
-  def y_range = @y_range ||= Range.new(*[point1.y, point2.y].sort.then { |y1, y2| [y1 + 1, y2 - 1] })
-  def full_x_range = @full_x_range ||= Range.new(*[point1.x, point2.x].sort)
-  def full_y_range = @full_y_range ||= Range.new(*[point1.y, point2.y].sort)
+  def x_range = @x_range ||= Range.new(*[point1.x, point2.x].sort)
+  def y_range = @y_range ||= Range.new(*[point1.y, point2.y].sort)
 
   def contains?(other)
     case other
     when LineSegment
-      full_x_range.cover?(other.full_x_range) && full_y_range.cover?(other.full_y_range)
+      x_range.cover?(other.x_range) && y_range.cover?(other.y_range)
     when Point
-      full_x_range.cover?(other.x) && full_y_range.cover?(other.y)
+      x_range.cover?(other.x) && y_range.cover?(other.y)
     else raise
     end
   end
-end
-
-class Straight
-  attr_reader :direction, :x_or_y
-
-  def initialize(direction:, x_or_y:)
-    @direction = direction
-    @x_or_y = x_or_y
-  end
-
-  def ===(other)
-    direction == other.direction && x_or_y == other.x_or_y
-  end
-
-  def x
-    raise unless direction == :vertical
-
-    x_or_y
-  end
-
-  def y
-    raise unless direction == :horizontal
-
-    x_or_y
-  end
-
-  def other_direction = direction == :vertical ? :horizontal : :vertical
 end
 
 puzzle = Puzzle.new(file: __FILE__, test: ARGV.include?("test"))

@@ -23,6 +23,8 @@ GEM
     logger (1.7.0)
     net-http (0.8.0)
       uri (>= 0.11.1)
+    or-tools (0.16.1)
+      rice (>= 4.7)
     pp (0.6.3)
       prettyprint
     prettyprint (0.2.0)
@@ -35,6 +37,7 @@ GEM
       tsort
     reline (0.6.3)
       io-console (~> 0.5)
+    rice (4.7.1)
     stringio (3.1.8)
     tsort (0.2.0)
     uri (1.1.1)
@@ -48,6 +51,7 @@ DEPENDENCIES
   colorize
   debug
   faraday
+  or-tools
 
 RUBY VERSION
    ruby 3.4.6p54
